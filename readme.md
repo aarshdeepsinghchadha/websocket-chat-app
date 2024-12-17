@@ -1,6 +1,6 @@
 # WebSocket Chat Application
 
-### Try it here : [pinroom.com](https://pingroom.netlify.app/)
+### Try it here : [pingroom.com](https://pingroom.netlify.app/)
 
 ## Overview
 

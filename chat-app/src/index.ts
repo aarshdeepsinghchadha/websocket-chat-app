@@ -143,43 +143,45 @@ wss.on("connection", (socket) => {
         }
 
         case "leaveRoom": {
-          const user = users.get(socket);
-          if (user) {
-            const room = rooms.get(user.room);
-            if (room) {
-              room.users = room.users.filter((u) => u.socket !== socket);
-              if (room.users.length === 0) {
-                rooms.delete(room.code);
-                console.log(`Room ${room.code} deleted.`);
+            const user = users.get(socket);
+            if (user) {
+              const room = rooms.get(user.room);
+              if (room) {
+                room.users = room.users.filter((u) => u.socket !== socket);
                 room.users.forEach((u) => {
                   u.socket.send(
                     JSON.stringify({
-                      type: "system",
-                      message: `Room ${room.code} has been deleted because you're the last user.`,
+                      type: "userCountUpdate",
+                      usersCount: room.users.length,
                     })
                   );
                 });
-              } else {
-                room.users.forEach((u) =>
-                  u.socket.send(
-                    JSON.stringify({
-                      type: "system",
-                      message: `${user.name} has left the room.`,
-                    })
-                  )
-                );
+          
+                if (room.users.length === 0) {
+                  rooms.delete(room.code);
+                  console.log(`Room ${room.code} deleted.`);
+                } else {
+                  room.users.forEach((u) => {
+                    u.socket.send(
+                      JSON.stringify({
+                        type: "system",
+                        message: `${user.name} has left the room.`,
+                      })
+                    );
+                  });
+                }
               }
+              users.delete(socket);
+              socket.send(
+                JSON.stringify({
+                  type: "system",
+                  message: "You have left the room.",
+                })
+              );
             }
-            users.delete(socket);
-            socket.send(
-              JSON.stringify({
-                type: "system",
-                message: "You have left the room.",
-              })
-            );
+            break;
           }
-          break;
-        }
+          
 
         default:
           console.log("Unknown message type:", data.type);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import { faCopy } from "@fortawesome/free-solid-svg-icons";
@@ -6,20 +6,20 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Modal from "react-modal";
 
-// Ensure that your app is connected to the DOM for modals
 Modal.setAppElement("#root");
 
 const App = () => {
   const [name, setName] = useState<string>("");
   const [roomCode, setRoomCode] = useState<string>("");
-  const [chatMessages, setChatMessages] = useState<{ userName: string; content: string }[]>([]);
+  const [chatMessages, setChatMessages] = useState<
+    { userName: string; content: string }[]
+  >([]);
   const [message, setMessage] = useState<string>("");
   const [connected, setConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [usersCount, setUsersCount] = useState<number>(0);
-  const [isModalOpen, setIsModalOpen] = useState(false); // For the confirmation modal
-  const [shouldDestroyRoom, setShouldDestroyRoom] = useState(false); // Determines if the room should be destroyed
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [shouldDestroyRoom, setShouldDestroyRoom] = useState(false);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -137,9 +137,13 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-external flex items-center justify-center p-4">
-      <div className={`w-full max-w-2xl bg-chatbox p-6 rounded-lg shadow-md ${connected ? "h-[52rem]" : ""}`}>
+      <div
+        className={`w-full max-w-2xl bg-chatbox p-6 rounded-lg shadow-md ${
+          connected ? "h-[52rem]" : ""
+        }`}
+      >
         <ToastContainer position="bottom-right" autoClose={2000} />
-        <div className="heading-section flex justify-between items-center">
+        <div className="heading-section flex flex-col sm:flex-row justify-between items-center">
           <div className="text-left">
             <h1 className="text-2xl font-bold flex items-center">
               <FontAwesomeIcon icon={faWhatsapp} className="mr-2" />
@@ -151,7 +155,7 @@ const App = () => {
           {connected && (
             <button
               onClick={leaveRoom}
-              className="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600"
+              className="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 mt-4 sm:mt-0"
             >
               Leave Room
             </button>
@@ -179,14 +183,22 @@ const App = () => {
               <button
                 onClick={createRoom}
                 disabled={loading}
-                className={`w-full py-2 rounded ${loading ? "bg-buttonSecondaryColor cursor-not-allowed" : "bg-buttonColor text-white hover:bg-buttonSecondaryColor"}`}
+                className={`w-full py-2 rounded ${
+                  loading
+                    ? "bg-buttonSecondaryColor cursor-not-allowed"
+                    : "bg-buttonColor text-white hover:bg-buttonSecondaryColor"
+                }`}
               >
                 {loading ? "Creating..." : "Create Room"}
               </button>
               <button
                 onClick={joinRoom}
                 disabled={loading}
-                className={`w-full py-2 rounded ${loading ? "bg-buttonSecondaryColor cursor-not-allowed" : "bg-buttonColor text-white hover:bg-buttonSecondaryColor"}`}
+                className={`w-full py-2 rounded ${
+                  loading
+                    ? "bg-buttonSecondaryColor cursor-not-allowed"
+                    : "bg-buttonColor text-white hover:bg-buttonSecondaryColor"
+                }`}
               >
                 {loading ? "Joining..." : "Join Room"}
               </button>
@@ -197,7 +209,7 @@ const App = () => {
             <div className="flex justify-between items-center mt-4 bg-innerchat opacity-50 rounded-xl p-2 shadow-md">
               <div className="subtitle">
                 <div className="flex items-center space-x-2">
-                  <h2 className="text-xl font-bold">Room Code : {roomCode}</h2>
+                  <h2 className="text-l font-bold">Room Code : {roomCode}</h2>
                   <FontAwesomeIcon
                     icon={faCopy}
                     className="cursor-pointer text-gray-600 hover:text-gray-800"
@@ -208,10 +220,12 @@ const App = () => {
                   />
                 </div>
               </div>
-              <span className="text-md font-bold text-black">Users: {usersCount}</span>
+              <span className="text-md font-bold text-black">
+                Users: {usersCount}
+              </span>
             </div>
 
-            <div className="h-[35rem] overflow-y-auto p-4 bg-white rounded-2xl mt-6">
+            <div className="h-[30rem] sm:h-[25rem] md:h-[30rem] overflow-y-auto p-4 bg-white rounded-2xl mt-6">
               {chatMessages.map((msg, idx) => (
                 <div key={idx} className="mb-2">
                   <span className="font-semibold">{msg.userName}: </span>
@@ -221,22 +235,29 @@ const App = () => {
                 </div>
               ))}
             </div>
+
             <div className="flex items-center space-x-4 mt-6">
               <input
                 type="text"
                 placeholder="Type a message"
-                className="flex-1 border px-4 py-2 rounded-xl bg-white"
+                className="flex-1 border px-4 py-2 rounded-xl bg-white text-sm sm:text-base"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
               />
               <button
                 onClick={() => {
                   if (ws.current && message.trim()) {
-                    ws.current.send(JSON.stringify({ type: "message", roomCode, content: message }));
+                    ws.current.send(
+                      JSON.stringify({
+                        type: "message",
+                        roomCode,
+                        content: message,
+                      })
+                    );
                     setMessage("");
                   }
                 }}
-                className="bg-buttonColor text-white px-4 py-2 w-32 rounded-md hover:bg-buttonSecondaryColor"
+                className="bg-buttonColor text-white px-4 py-2 w-32 rounded-md hover:bg-buttonSecondaryColor sm:w-36 md:w-40"
               >
                 Send
               </button>
@@ -246,9 +267,19 @@ const App = () => {
       </div>
 
       {/* Confirmation Modal */}
-      <Modal isOpen={isModalOpen} onRequestClose={() => setIsModalOpen(false)} className="bg-white p-6 rounded-lg shadow-lg w-1/3 mx-auto mt-20">
-        <h2 className="text-xl font-bold mb-4">Are you sure you want to leave the room?</h2>
-        <p className="mb-4">If you leave and you are the only user in the room, the room will be destroyed.</p>
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={() => setIsModalOpen(false)}
+        className="bg-white p-6 rounded-lg shadow-lg w-full sm:w-3/4 md:w-1/3 mx-auto mt-0 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+        overlayClassName="fixed inset-0 bg-transparent" // Remove default overlay background
+      >
+        <h2 className="text-xl font-bold mb-4">
+          Are you sure you want to leave the room?
+        </h2>
+        <p className="mb-4">
+          If you leave and you are the only user in the room, the room will be
+          destroyed.
+        </p>
         <div className="flex space-x-4">
           <button
             onClick={() => {
@@ -256,7 +287,7 @@ const App = () => {
               confirmLeaveRoom();
               setIsModalOpen(false);
             }}
-            className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+            className="bg-red-500 text-white px-4 py-2 rounded-md w-full hover:bg-red-600"
           >
             Yes
           </button>
@@ -265,7 +296,7 @@ const App = () => {
               setIsModalOpen(false);
               setShouldDestroyRoom(false);
             }}
-            className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
+            className="bg-gray-500 text-white px-4 py-2 rounded-md w-full hover:bg-gray-600"
           >
             No
           </button>

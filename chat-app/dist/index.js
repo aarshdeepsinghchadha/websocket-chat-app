@@ -104,21 +104,25 @@ wss.on("connection", (socket) => {
                         const room = rooms.get(user.room);
                         if (room) {
                             room.users = room.users.filter((u) => u.socket !== socket);
+                            // Send updated user count to all remaining users
+                            room.users.forEach((u) => {
+                                u.socket.send(JSON.stringify({
+                                    type: "userCountUpdate",
+                                    usersCount: room.users.length,
+                                }));
+                            });
+                            // Check if the room should be deleted
                             if (room.users.length === 0) {
                                 rooms.delete(room.code);
                                 console.log(`Room ${room.code} deleted.`);
+                            }
+                            else {
                                 room.users.forEach((u) => {
                                     u.socket.send(JSON.stringify({
                                         type: "system",
-                                        message: `Room ${room.code} has been deleted because you're the last user.`,
+                                        message: `${user.name} has left the room.`,
                                     }));
                                 });
-                            }
-                            else {
-                                room.users.forEach((u) => u.socket.send(JSON.stringify({
-                                    type: "system",
-                                    message: `${user.name} has left the room.`,
-                                })));
                             }
                         }
                         users.delete(socket);

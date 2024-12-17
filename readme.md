@@ -1,141 +1,112 @@
-# Chat Application - README
+# WebSocket Chat Application
 
 ## Overview
-This chat application backend is built using Node.js and WebSocket. It facilitates real-time communication between users by enabling them to join rooms, send messages, and receive updates instantly. Each user interacts with the server over a WebSocket connection, which ensures low-latency, bidirectional communication.
 
-## Key Features
-- **Real-time messaging**: Users can send and receive messages in real-time.
-- **Room management**: Users can create, join, and communicate in specific chat rooms.
-- **Message history**: Each room maintains a history of messages, which is sent to users when they join.
-- **Dynamic user and room tracking**: Tracks active users and rooms with efficient management.
+This is a real-time chat application that leverages WebSockets for communication between users. It has two main components:
 
-## Architecture
-The backend uses the `ws` library for WebSocket support. The server manages a list of users and rooms to handle messaging and room-specific interactions efficiently.
+1. **Backend**: Built using Node.js and WebSocket for handling real-time messaging and room management.
+2. **Frontend**: A React app using TypeScript and Tailwind CSS to provide a sleek and responsive UI for users to interact with.
 
-### Main Components
-- **WebSocket Server**: Listens for incoming WebSocket connections on port `8080`.
-- **Users**: Each user is identified by a unique ID and associated with a specific room.
-- **Rooms**: A logical grouping where users can send and receive messages. Each room has a message history and tracks the number of active users.
+### Key Features:
+- Users can create or join chat rooms.
+- Real-time message exchange between users.
+- User count in each room updates live.
+- Room creation with a unique code for sharing.
+- Option to leave a room, with automatic room deletion if no users remain.
 
----
+## Requirements
 
-## Code Explanation
-### Initialization
-The WebSocket server is initialized with the `ws` library:
-```javascript
-const wss = new WebSocketServer({ port: 8080 });
-```
-
-### Data Structures
-1. **Users**: An array of user objects, each containing:
-   - `socket`: The WebSocket connection object.
-   - `room`: The room the user has joined.
-   - `id`: A unique identifier for the user.
-
-2. **Rooms**: An array of room objects, each containing:
-   - `name`: The unique name of the room.
-   - `messages`: An array of message objects with `userId` and `content`.
-   - `userCount`: The number of users currently in the room.
-
-### WebSocket Connection Handling
-#### New Connection
-When a client connects, the server logs the connection:
-```javascript
-wss.on("connection", (socket) => {
-    console.log("New connection.");
-    // Connection-specific logic follows...
-});
-```
-
-#### Message Handling
-The server listens for incoming messages, parses them, and performs actions based on the message type:
-
-##### Join Room
-- A user can join a room by sending a message with type `joinRoom`.
-- The server:
-  1. Finds or creates the room.
-  2. Assigns the user a unique ID.
-  3. Updates the room's user count and adds the user to the `users` list.
-  4. Sends the room's message history and a system notification to the user.
-
-Example code:
-```javascript
-if (parsedMessage.type === "joinRoom") {
-    const { room } = parsedMessage;
-    let roomData = rooms.find((r) => r.name === room) || { name: room, messages: [], userCount: 0 };
-    roomData.userCount++;
-    userId = `user-${roomData.userCount}`;
-    users.push({ socket, room, id: userId });
-    socket.send(JSON.stringify({ type: "history", messages: roomData.messages }));
-}
-```
-
-##### Send Message
-- A user sends a message with type `message`.
-- The server:
-  1. Validates the user and room.
-  2. Adds the message to the room's history.
-  3. Broadcasts the message to all users in the room.
-
-Example code:
-```javascript
-if (parsedMessage.type === "message") {
-    const { room, content } = parsedMessage;
-    const sender = users.find((user) => user.socket === socket);
-    const roomData = rooms.find((r) => r.name === room);
-    const newMessage = { userId: sender.id, content };
-    roomData.messages.push(newMessage);
-    users.forEach((user) => {
-        if (user.room === room) {
-            user.socket.send(JSON.stringify({ type: "message", room, content, userId: sender.id }));
-        }
-    });
-}
-```
-
-##### Create Room
-- A user can create a new room by sending a message with type `createRoom`.
-- The server generates a unique room name, adds it to the `rooms` list, and broadcasts the new room to all clients.
-
-Example code:
-```javascript
-if (parsedMessage.type === "createRoom") {
-    const roomCode = `room-${Math.floor(Math.random() * 10000)}`;
-    rooms.push({ name: roomCode, messages: [], userCount: 0 });
-    wss.clients.forEach((client) => {
-        client.send(JSON.stringify({ type: "roomCreated", roomCode }));
-    });
-}
-```
-
-#### Connection Closure
-When a user disconnects, the server:
-1. Identifies the user.
-2. Decrements the room's user count.
-3. Removes the user from the `users` list.
-
-Example code:
-```javascript
-socket.on("close", () => {
-    const user = users.find((u) => u.socket === socket);
-    if (user) {
-        const roomData = rooms.find((r) => r.name === user.room);
-        roomData.userCount--;
-        users = users.filter((u) => u.socket !== socket);
-    }
-});
-```
+- Node.js (backend)
+- React, TypeScript (frontend)
+- Tailwind CSS for styling
+- WebSocket protocol for real-time communication
 
 ---
 
-## How to Run the Server
-1. Install dependencies:
-   ```bash
-   npm install ws
-   ```
-2. Start the server:
-   ```bash
-   node server.js
-   ```
-3. The WebSocket server will run on `ws://localhost:8080`.
+## Backend (Node.js)
 
+The backend is a WebSocket server that facilitates communication between clients. It handles multiple rooms, message broadcasting, and user management.
+
+### How it works:
+- **Rooms**: When a user creates a room, a unique room code is generated. Other users can join the room using this code.
+- **Messages**: Messages sent by users are broadcasted to all users in the room.
+- **User Count**: The server tracks the number of users in each room and updates all connected users in real-time.
+- **Room Deletion**: If the last user leaves a room, the server deletes the room.
+
+### Starting the Backend:
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the WebSocket server:
+   ```bash
+   npm run dev
+   ```
+   The server will start on `ws://localhost:8080`.
+
+---
+
+## Frontend (React)
+
+The frontend is a React app with TypeScript that provides the user interface. It allows users to input their name, create or join a room, send messages, and view the real-time chat history.
+
+### Key Components:
+- **Room Creation**: Users can create a room by entering their name. A unique room code is generated.
+- **Joining Room**: Users can join an existing room using a room code.
+- **Messaging**: Users can send messages to the chat room, which are broadcasted to all members of the room.
+- **Leave Room**: Users can leave the room, and if they are the last user, the room will be destroyed.
+
+### Starting the Frontend:
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the React app:
+   ```bash
+   npm run dev
+   ```
+   The app will be available at `http://localhost:3000`.
+
+---
+
+## Running Both Backend and Frontend
+
+1. Start the backend server using `npm start` inside the backend folder.
+2. Start the frontend app using `npm start` inside the frontend folder.
+3. Open `http://localhost:3000` in a web browser to interact with the chat.
+
+---
+
+## Code Walkthrough
+
+### Backend Code:
+- The backend uses the `ws` library to create a WebSocket server.
+- **Room Creation**: When a user sends a "createRoom" message, a new room is generated with a unique code. The user is assigned to this room.
+- **Room Joining**: Users can join a room by sending a "joinRoom" message with a room code. If the room exists, the user joins and the chat history is sent to the user.
+- **Message Broadcasting**: When a user sends a message, it is broadcasted to all other users in the same room.
+- **User Count Management**: Each time a user joins or leaves a room, the user count is updated and sent to all other users in the room.
+- **Room Deletion**: If the last user leaves, the room is deleted.
+
+### Frontend Code:
+- **WebSocket Connection**: The frontend connects to the backend WebSocket server on `ws://localhost:8080`.
+- **UI**: The user interface is styled with Tailwind CSS and displays real-time messages, room code, and user count.
+- **State Management**: React's `useState` and `useEffect` hooks are used to manage the UI state, such as name input, room code, messages, and user count.
+- **Toast Notifications**: Real-time feedback is provided to users with toast notifications for actions like room creation, message sending, errors, etc.
+- **Modal**: A confirmation modal prompts users to confirm if they want to leave the room, especially when the room is about to be destroyed.
+
+---
+
+## Technology Stack
+- **Backend**: Node.js, WebSocket
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **Styling**: Tailwind CSS for responsive design and modern UI elements.
+- **State Management**: React's built-in hooks for managing state and side-effects.
+- **Real-Time Communication**: WebSocket protocol for low-latency, bi-directional communication.
+
+---
+
+## License
+
+This project is licensed under the MIT License.

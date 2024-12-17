@@ -23,7 +23,7 @@ const App = () => {
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    ws.current = new WebSocket("ws://localhost:8080");
+    ws.current = new WebSocket("https://websocket-chat-app-she9.onrender.com");
 
     ws.current.onopen = () => {
       toast.success("Connected to the server successfully!");
@@ -138,9 +138,8 @@ const App = () => {
   return (
     <div className="min-h-screen bg-external flex items-center justify-center p-4">
       <div
-        className={`w-full max-w-2xl bg-chatbox p-6 rounded-lg shadow-md ${
-          connected ? "h-[52rem]" : ""
-        }`}
+        className={`w-full max-w-2xl bg-chatbox p-6 rounded-lg shadow-md ${connected ? "h-[52rem]" : ""
+          }`}
       >
         <ToastContainer position="bottom-right" autoClose={2000} />
         <div className="heading-section flex flex-col sm:flex-row justify-between items-center">
@@ -183,22 +182,20 @@ const App = () => {
               <button
                 onClick={createRoom}
                 disabled={loading}
-                className={`w-full py-2 rounded ${
-                  loading
+                className={`w-full py-2 rounded ${loading
                     ? "bg-buttonSecondaryColor cursor-not-allowed"
                     : "bg-buttonColor text-white hover:bg-buttonSecondaryColor"
-                }`}
+                  }`}
               >
                 {loading ? "Creating..." : "Create Room"}
               </button>
               <button
                 onClick={joinRoom}
                 disabled={loading}
-                className={`w-full py-2 rounded ${
-                  loading
+                className={`w-full py-2 rounded ${loading
                     ? "bg-buttonSecondaryColor cursor-not-allowed"
                     : "bg-buttonColor text-white hover:bg-buttonSecondaryColor"
-                }`}
+                  }`}
               >
                 {loading ? "Joining..." : "Join Room"}
               </button>

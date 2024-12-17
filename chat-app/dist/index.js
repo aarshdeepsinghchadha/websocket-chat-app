@@ -2,117 +2,170 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const ws_1 = require("ws");
 const wss = new ws_1.WebSocketServer({ port: 8080 });
-let users = [];
-let rooms = [];
+const users = new Map();
+const rooms = new Map();
+const generateRoomCode = () => Math.random().toString(36).substr(2, 6).toUpperCase();
 wss.on("connection", (socket) => {
-    let userId = '';
     console.log("New connection.");
     socket.on("message", (message) => {
         try {
-            const parsedMessage = JSON.parse(message.toString());
-            if (parsedMessage.type === "joinRoom") {
-                const { room } = parsedMessage;
-                // Find or create the room
-                let roomData = rooms.find((r) => r.name === room);
-                if (!roomData) {
-                    roomData = { name: room, messages: [], userCount: 0 }; // Initialize userCount
-                    rooms.push(roomData);
-                }
-                // Increment user count for the room
-                roomData.userCount++;
-                userId = `user-${roomData.userCount}`; // Assign user ID as user-1, user-2, etc.
-                // Add the user to the users list
-                let user = users.find((u) => u.socket === socket);
-                if (user) {
-                    user.room = room; // Update room if the user is already connected
-                }
-                else {
-                    users.push({ socket, room, id: userId });
-                }
-                console.log(`${userId} joined room: ${room}, total users: ${roomData.userCount}`);
-                // Send the room's message history to the user
-                socket.send(JSON.stringify({
-                    type: "history",
-                    messages: roomData.messages,
-                }));
-                // Notify the user they have joined
-                socket.send(JSON.stringify({
-                    type: "system",
-                    message: `You joined room ${room} as ${userId}`,
-                    userId,
-                }));
-            }
-            else if (parsedMessage.type === "message") {
-                const { room, content } = parsedMessage;
-                // Find the sender
-                const sender = users.find((user) => user.socket === socket);
-                if (!sender) {
-                    console.error("Message received from an unknown user.");
-                    return;
-                }
-                // Find the room
-                const roomData = rooms.find((r) => r.name === room);
-                if (!roomData) {
-                    console.error(`Room ${room} does not exist.`);
-                    return;
-                }
-                // Save the message in the room's history
-                const newMessage = { userId: sender.id, content };
-                roomData.messages.push(newMessage);
-                // Broadcast the message to all users in the room
-                users.forEach((user) => {
-                    if (user.room === room) {
-                        user.socket.send(JSON.stringify({
-                            type: "message",
-                            room,
-                            content,
-                            userId: sender.id,
+            const data = JSON.parse(message.toString());
+            switch (data.type) {
+                case "createRoom": {
+                    if (!data.name || typeof data.name !== "string") {
+                        return socket.send(JSON.stringify({
+                            type: "error",
+                            message: "Invalid name provided.",
                         }));
                     }
-                });
-                console.log(`Message in room ${room} from ${sender.id}: ${content}`);
-            }
-            else if (parsedMessage.type === "createRoom") {
-                console.log("A new room is being created.");
-                // Create a new unique room code
-                const roomCode = `room-${Math.floor(Math.random() * 10000)}`;
-                // Create the new room in the backend with initial user count as 0
-                const newRoom = { name: roomCode, messages: [], userCount: 0 };
-                rooms.push(newRoom);
-                // Notify all connected clients about the new room creation
-                wss.clients.forEach((client) => {
-                    client.send(JSON.stringify({
-                        type: "system",
-                        message: `Room ${roomCode} has been created.`,
-                    }));
-                });
-                // Optionally, send this new room data to all connected users
-                wss.clients.forEach((client) => {
-                    client.send(JSON.stringify({
+                    const userId = `user-${Math.random().toString(36).substr(2, 5)}`;
+                    const roomCode = generateRoomCode();
+                    const room = { code: roomCode, messages: [], users: [] };
+                    rooms.set(roomCode, room);
+                    const user = {
+                        id: userId,
+                        name: data.name,
+                        socket,
+                        room: roomCode,
+                    };
+                    room.users.push(user);
+                    users.set(socket, user);
+                    console.log(`Room created: ${roomCode} by ${user.name}`);
+                    socket.send(JSON.stringify({
                         type: "roomCreated",
-                        roomCode: roomCode,
+                        roomCode,
+                        userId,
+                        message: `Room ${roomCode} created. Share this code to invite others.`,
+                        usersCount: room.users.length,
                     }));
-                });
+                    break;
+                }
+                case "joinRoom": {
+                    const roomToJoin = rooms.get(data.roomCode.toUpperCase());
+                    if (!roomToJoin) {
+                        return socket.send(JSON.stringify({ type: "error", message: "Room does not exist." }));
+                    }
+                    if (!data.name || typeof data.name !== "string") {
+                        return socket.send(JSON.stringify({
+                            type: "error",
+                            message: "Invalid name provided.",
+                        }));
+                    }
+                    const userId = `user-${Math.random().toString(36).substr(2, 5)}`;
+                    const user = {
+                        id: userId,
+                        name: data.name,
+                        socket,
+                        room: roomToJoin.code,
+                    };
+                    roomToJoin.users.push(user);
+                    users.set(socket, user);
+                    console.log(`${user.name} joined room: ${roomToJoin.code}`);
+                    socket.send(JSON.stringify({
+                        type: "joinedRoom",
+                        roomCode: roomToJoin.code,
+                        userId,
+                        message: `Welcome to the room ${roomToJoin.code}.`,
+                        history: roomToJoin.messages,
+                        usersCount: roomToJoin.users.length,
+                    }));
+                    roomToJoin.users.forEach((u) => {
+                        u.socket.send(JSON.stringify({
+                            type: "userCountUpdate",
+                            usersCount: roomToJoin.users.length,
+                        }));
+                    });
+                    break;
+                }
+                case "message": {
+                    const user = users.get(socket);
+                    if (!user)
+                        return;
+                    const room = rooms.get(user.room);
+                    if (!room)
+                        return;
+                    const newMessage = {
+                        userName: user.name,
+                        content: data.content,
+                    };
+                    room.messages.push(newMessage);
+                    room.users.forEach((u) => {
+                        u.socket.send(JSON.stringify({
+                            type: "message",
+                            userName: user.name,
+                            content: data.content,
+                        }));
+                    });
+                    break;
+                }
+                case "leaveRoom": {
+                    const user = users.get(socket);
+                    if (user) {
+                        const room = rooms.get(user.room);
+                        if (room) {
+                            room.users = room.users.filter((u) => u.socket !== socket);
+                            if (room.users.length === 0) {
+                                rooms.delete(room.code);
+                                console.log(`Room ${room.code} deleted.`);
+                                room.users.forEach((u) => {
+                                    u.socket.send(JSON.stringify({
+                                        type: "system",
+                                        message: `Room ${room.code} has been deleted because you're the last user.`,
+                                    }));
+                                });
+                            }
+                            else {
+                                room.users.forEach((u) => u.socket.send(JSON.stringify({
+                                    type: "system",
+                                    message: `${user.name} has left the room.`,
+                                })));
+                            }
+                        }
+                        users.delete(socket);
+                        socket.send(JSON.stringify({
+                            type: "system",
+                            message: "You have left the room.",
+                        }));
+                    }
+                    break;
+                }
+                default:
+                    console.log("Unknown message type:", data.type);
             }
         }
         catch (err) {
             console.error("Error processing message:", err);
+            socket.send(JSON.stringify({
+                type: "error",
+                message: "An error occurred while processing your request.",
+            }));
         }
     });
     socket.on("close", () => {
-        console.log(`User ${userId} disconnected.`);
-        // Find the user who disconnected
-        const user = users.find((u) => u.socket === socket);
+        const user = users.get(socket);
         if (user) {
-            const roomData = rooms.find((r) => r.name === user.room);
-            if (roomData) {
-                // Decrease the user count for the room
-                roomData.userCount--;
-                console.log(`User left room: ${user.room}, remaining users: ${roomData.userCount}`);
+            const room = rooms.get(user.room);
+            if (room) {
+                room.users = room.users.filter((u) => u.socket !== socket);
+                if (room.users.length === 0) {
+                    rooms.delete(room.code);
+                    console.log(`Room ${room.code} deleted.`);
+                }
+                else {
+                    room.users.forEach((u) => {
+                        u.socket.send(JSON.stringify({
+                            type: "userCountUpdate",
+                            usersCount: room.users.length,
+                        }));
+                    });
+                }
             }
-            // Remove the user from the users list
-            users = users.filter((u) => u.socket !== socket);
+            users.delete(socket);
         }
+        console.log("Connection closed.");
+    });
+    socket.on("error", (err) => {
+        console.error("WebSocket error:", err);
     });
 });
 console.log("WebSocket server is running on ws://localhost:8080");
